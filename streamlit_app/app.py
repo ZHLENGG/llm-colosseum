@@ -62,7 +62,7 @@ if 'battle_id' in st.session_state:
                         if round1_resp:
                             st.success(round1_resp['content'])
                         else:
-                            # Вот наша визуализация "раздумий"
+                            # Визуализация "раздумий"
                             with st.spinner("🔄 Генерирует ответ..."):
                                 time.sleep(0.1) # Просто чтобы спиннер отрисовался
 
@@ -78,7 +78,7 @@ if 'battle_id' in st.session_state:
                             if r['id'] == c['target_response_id']:
                                 target_author = p['display_name']
                     
-                    # Красивый прогресс-бар для оценки
+                    # прогресс-бар для оценки
                     score_color = "green" if c['score'] >= 7 else "orange" if c['score'] >= 4 else "red"
                     with st.expander(f"{author} ➡️ {target_author} (Оценка: {c['score']}/10)"):
                         st.progress(c['score'] / 10.0, text=f"Оценка: {c['score']}/10")

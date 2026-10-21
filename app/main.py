@@ -1,15 +1,12 @@
 from fastapi import FastAPI
 from app.api.routes import battles
 
-# Создаем экземпляр приложения FastAPI. 
-# title и version будут отображаться в автоматической документации.
 app = FastAPI(
     title="LLM Colosseum API",
     description="Multi-agent LLM debates platform",
     version="0.1.0"
 )
 
-# Подключаем роутер
 app.include_router(battles.router)
 
 @app.get("/")

@@ -1,7 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
 
-# Создаем движок. echo=True будет выводить SQL-запросы в консоль (полезно для отладки)
+# Создаем движок. echo=True будет выводить SQL-запросы в консоль (для отладки)
 engine = create_async_engine(
     settings.database_url,
     echo=False,

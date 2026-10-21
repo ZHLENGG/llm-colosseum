@@ -1,7 +1,7 @@
 from __future__ import annotations
 import uuid
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy import String, ForeignKey, Numeric, Text # <-- Добавили Numeric, Text
+from sqlalchemy import String, ForeignKey, Numeric, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
@@ -17,7 +17,6 @@ class Participant(Base):
     model_name: Mapped[str] = mapped_column(String(50), nullable=False)
     role: Mapped[str] = mapped_column(String(10), default="agent") 
     
-    # ТЕ САМЫЕ НОВЫЕ ПОЛЯ:
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     total_score: Mapped[Optional[float]] = mapped_column(Numeric(6, 2))
     

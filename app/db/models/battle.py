@@ -18,7 +18,7 @@ class Battle(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     judge_summary: Mapped[Optional[str]] = mapped_column(Text)
     
-    # НОВОЕ ПОЛЕ: ID победителя
+    # ID победителя
     winner_participant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         ForeignKey("participants.id", ondelete="SET NULL"), nullable=True
     )
@@ -27,7 +27,6 @@ class Battle(Base):
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    # ВАЖНО: указываем foreign_keys, так как у нас теперь две связи с participants
     participants: Mapped[List["Participant"]] = relationship(
         back_populates="battle", 
         cascade="all, delete-orphan",

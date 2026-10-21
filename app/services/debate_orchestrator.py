@@ -220,7 +220,7 @@ async def run_battle_judge(battle_id: str, db: AsyncSession):
     # Формируем текст критики для Судьи
     critiques_text = ""
     for c in critiques:
-        author_name = "Агент" # В нашей текущей схеме мы не подгружаем автора в critique, но можем найти его по ID
+        author_name = "Агент"
         # Найдем имя автора среди участников (у нас их всего 2)
         author = next((r.participant for r in responses if r.participant.id == c.author_participant_id), None)
         if author:

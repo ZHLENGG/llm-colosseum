@@ -71,7 +71,6 @@ async def run_async_migrations() -> None:
 
     from sqlalchemy.ext.asyncio import create_async_engine
     
-    # Берем URL напрямую из нашей конфигурации, игнорируя alembic.ini
     connectable = create_async_engine(
         config.get_main_option("sqlalchemy.url"),
         poolclass=pool.NullPool,
