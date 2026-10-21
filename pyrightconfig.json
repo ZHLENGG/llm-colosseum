@@ -1,0 +1,9 @@
+{
+    "include": ["."],
+    "extraPaths": ["."],
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "none",
+    "reportAttributeAccessIssue": "none",
+    "reportArgumentType": "none",
+    "reportCallIssue": "none"
+}
