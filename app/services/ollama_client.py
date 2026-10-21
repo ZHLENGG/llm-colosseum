@@ -16,14 +16,17 @@ class OllamaClient:
         payload = {
             "model": model,
             "prompt": prompt,
-            "stream": False # Нам нужен ответ целиком, а не по кусочкам (стриминг)
+            "stream": False,
+            "options": {
+                "num_predict": 300  # <-- Максимум 300 токенов на ответ. Зацикливаться не сможет.
+            }
         }
 
         # Используем асинхронный клиент httpx
         async with httpx.AsyncClient() as client:
             try:
                 # timeout=120.0, потому что локальные модели могут думать долго
-                response = await client.post(url, json=payload, timeout=120.0)
+                response = await client.post(url, json=payload, timeout=300.0)
                 response.raise_for_status() # Если ошибка 4xx или 5xx - выбросит исключение
                 return response.json()
             except httpx.HTTPStatusError as e:

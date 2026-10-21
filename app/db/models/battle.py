@@ -1,15 +1,15 @@
 from __future__ import annotations
-from typing import Optional, TYPE_CHECKING
 import uuid
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.participant import Participant
-    
+    from app.db.models.critique import Critique
+
 class Battle(Base):
     __tablename__ = "battles"
 
@@ -18,9 +18,19 @@ class Battle(Base):
     status: Mapped[str] = mapped_column(String(20), default="pending")
     judge_summary: Mapped[Optional[str]] = mapped_column(Text)
     
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    # НОВОЕ ПОЛЕ: ID победителя
+    winner_participant_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("participants.id", ondelete="SET NULL"), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    # Связи (relationships)
-    participants: Mapped[list["Participant"]] = relationship(back_populates="battle", cascade="all, delete-orphan")
+    # ВАЖНО: указываем foreign_keys, так как у нас теперь две связи с participants
+    participants: Mapped[List["Participant"]] = relationship(
+        back_populates="battle", 
+        cascade="all, delete-orphan",
+        foreign_keys="Participant.battle_id"
+    )
+    critiques: Mapped[List["Critique"]] = relationship(back_populates="battle", cascade="all, delete-orphan")

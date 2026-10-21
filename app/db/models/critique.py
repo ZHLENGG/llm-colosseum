@@ -8,12 +8,14 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.db.models.response import Response
-    
+    from app.db.models.battle import Battle
+
 class Critique(Base):
     __tablename__ = "critiques"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     battle_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("battles.id", ondelete="CASCADE"))
+    battle: Mapped["Battle"] = relationship(back_populates="critiques")
     
     # Кто написал критику
     author_participant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("participants.id", ondelete="CASCADE"))

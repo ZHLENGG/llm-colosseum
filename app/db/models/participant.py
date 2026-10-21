@@ -21,5 +21,8 @@ class Participant(Base):
     display_name: Mapped[str] = mapped_column(Text, nullable=False)
     total_score: Mapped[Optional[float]] = mapped_column(Numeric(6, 2))
     
-    battle: Mapped[Battle] = relationship(back_populates="participants")
+    battle: Mapped["Battle"] = relationship(
+        back_populates="participants", 
+        foreign_keys=[battle_id]
+    )
     responses: Mapped[list[Response]] = relationship(back_populates="participant", cascade="all, delete-orphan")

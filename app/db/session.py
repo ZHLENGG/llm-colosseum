@@ -4,7 +4,7 @@ from app.core.config import settings
 # Создаем движок. echo=True будет выводить SQL-запросы в консоль (полезно для отладки)
 engine = create_async_engine(
     settings.database_url,
-    echo=True,
+    echo=False,
     future=True
 )
 
