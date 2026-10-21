@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. Наша База Данных
+  db:
+    image: postgres:16-alpine
+    container_name: colosseum_db
+    environment:
+      # Эти логин и пароль мы придумываем сами. Они нужны, чтобы FastAPI мог подключиться к БД.
+      POSTGRES_USER: colosseum_user
+      POSTGRES_PASSWORD: super_secret_password
+      POSTGRES_DB: colosseum_db
+    ports:
+      # Пробрасываем порт 5432 из контейнера в твой компьютер, чтобы можно было подключаться снаружи
+      - "5432:5432"
+    volumes:
+      # Это очень важно: мы говорим Docker сохранять данные в отдельном хранилище, 
+      # чтобы при перезапуске контейнера наши баттлы не стирались
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # Проверка, что база данных реально проснулась и готова принимать запросы
+      test: ["CMD-SHELL", "pg_isready -U colosseum_user -d colosseum_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Визуализатор (чтобы смотреть, что внутри БД)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: colosseum_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      # Открываем pgAdmin в браузере по адресу http://localhost:5050
+      - "5050:80"
+    depends_on:
+      db:
+        condition: service_healthy # Ждем, пока база данных полностью запустится
+
+# Объявляем хранилище данных
+volumes:
+  postgres_data:

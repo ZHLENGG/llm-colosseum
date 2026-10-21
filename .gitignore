@@ -1,0 +1,15 @@
+# Виртуальное окружение
+.venv/
+venv/
+
+# Секреты (пароли, токены)
+.env
+
+# Кэш Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Файлы IDE
+.vscode/
+.idea/
