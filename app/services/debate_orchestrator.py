@@ -182,14 +182,13 @@ async def run_battle_round_2(battle_id: str, db: AsyncSession):
 
 async def run_battle_judge(battle_id: str, db: AsyncSession):
     """
-    Финал: Независимый суд на основе оригинальных ответов.
+    Финал: Судья анализирует и оригинальные ответы, и критику, и выносит вердикт.
     """
     logger.info(f"Starting Judge for battle {battle_id}")
 
     result = await db.execute(select(Battle).where(Battle.id == battle_id))
     battle = result.scalar_one_or_none()
 
-    # Статус для UI: Судья думает
     battle.status = "judge_thinking"
     await db.commit()
     
@@ -201,60 +200,78 @@ async def run_battle_judge(battle_id: str, db: AsyncSession):
     )
     responses = result.scalars().all()
     
+    # Получаем всю критику
+    result = await db.execute(
+        select(Critique)
+        .options(selectinload(Critique.target_response).selectinload(Response.participant))
+        .where(Critique.battle_id == battle_id)
+    )
+    critiques = result.scalars().all()
+    
     if len(responses) < 2:
         logger.error("Not enough responses for judging")
         battle.status = "failed"
         await db.commit()
         return
 
-    # Готовим промпт для Судьи (Mistral), давая ему прочитать оба ответа
     resp1 = responses[0]
     resp2 = responses[1]
     
+    # Формируем текст критики для Судьи
+    critiques_text = ""
+    for c in critiques:
+        author_name = "Агент" # В нашей текущей схеме мы не подгружаем автора в critique, но можем найти его по ID
+        # Найдем имя автора среди участников (у нас их всего 2)
+        author = next((r.participant for r in responses if r.participant.id == c.author_participant_id), None)
+        if author:
+            author_name = author.display_name
+            
+        target_name = c.target_response.participant.display_name if c.target_response else "Неизвестно"
+        critiques_text += f"- {author_name} критикует {target_name} (оценка {c.score}/10):\n  {c.content}\n\n"
+
+    # Умный промпт для Судьи
     prompt = (
         f"Вопрос пользователя: {battle.question}\n\n"
-        f"Ответ участника {resp1.participant.display_name}:\n{resp1.content}\n\n"
-        f"Ответ участника {resp2.participant.display_name}:\n{resp2.content}\n\n"
-        f"Ты — беспристрастный судья. Какой из этих двух ответов лучше и полезнее для пользователя?\n"
-        f"Напиши короткое резюме (2-3 предложения) на РУССКОМ языке, объясняя, почему ты выбрал этого победителя.\n"
-        f"В самом конце напиши строго: 'Победитель: [ТОЧНОЕ ИМЯ УЧАСТНИКА]' (выбери одно из двух имен)."
+        f"--- ОРИГИНАЛЬНЫЕ ОТВЕТЫ ---\n"
+        f"Ответ 1 ({resp1.participant.display_name}):\n{resp1.content}\n\n"
+        f"Ответ 2 ({resp2.participant.display_name}):\n{resp2.content}\n\n"
+        f"--- ПЕРЕКРЕСТНАЯ КРИТИКА ---\n"
+        f"{critiques_text}\n"
+        f"--- ТВОЯ ЗАДАЧА ---\n"
+        f"Ты — верховный беспристрастный Судья. Ты должен выбрать лучший ответ.\n"
+        f"Проанализируй оригинальные ответы и учти аргументы из критики. "
+        f"Однако помни: агенты могут быть предвзяты, ошибаться или галлюцинировать. "
+        f"Игнорируй необоснованные придирки и сосредоточься на том, какой ответ реально полезнее и точнее.\n"
+        f"Напиши короткое резюме (2-3 предложения) на РУССКОМ языке, объясняя свой выбор.\n"
+        f"В самом конце напиши строго: 'Победитель: [ТОЧНОЕ ИМЯ УЧАСТНИКА]'."
     )
     
     try:
-        # Судьей всегда выступает mistral, так как она умнее
         judge_result = await ollama_client.generate_response(model="mistral", prompt=prompt)
         summary = judge_result.get("response", "")
         battle.judge_summary = summary
         
-        # Пытаемся понять, кого выбрал судья
-        winner = resp1.participant # По умолчанию первый
-        if resp2.participant.display_name.lower() in summary.lower() and resp1.participant.display_name.lower() not in summary.lower():
-            winner = resp2.participant
-        else:
-            # Более надежный поиск в конце текста (после слова "Победитель:")
-            match = re.search(r"Победитель:\s*(.+)", summary, re.IGNORECASE)
-            if match:
-                winner_name = match.group(1).strip().lower()
-                if resp2.participant.display_name.lower() in winner_name:
-                    winner = resp2.participant
-                elif resp1.participant.display_name.lower() in winner_name:
-                    winner = resp1.participant
+        winner = resp1.participant # По умолчанию
+        # Ищем победителя в конце ответа
+        match = re.search(r"Победитель:\s*(.+)", summary, re.IGNORECASE)
+        if match:
+            winner_name = match.group(1).strip().lower()
+            if resp2.participant.display_name.lower() in winner_name:
+                winner = resp2.participant
+            elif resp1.participant.display_name.lower() in winner_name:
+                winner = resp1.participant
 
         battle.winner_participant_id = winner.id
         
     except Exception as e:
         logger.error(f"Judge LLM error: {e}")
         battle.judge_summary = "Судья не смог вынести вердикт из-за ошибки."
-        battle.winner_participant_id = resp1.participant.id # Дефолт
+        battle.winner_participant_id = resp1.participant.id
 
-    # Обновляем баллы (чтобы в UI было красиво)
-    result = await db.execute(select(Critique).where(Critique.battle_id == battle_id))
-    critiques = result.scalars().all()
+    # Обновляем баллы для UI
     scores = {resp1.participant.id: 0, resp2.participant.id: 0}
-    resp_to_participant = {r.id: r.participant_id for r in responses}
-    
     for c in critiques:
-        target_id = resp_to_participant.get(c.target_response_id)
+        target_id = c.target_response.participant.id if c.target_response else None
         if target_id in scores:
             scores[target_id] += c.score
 
